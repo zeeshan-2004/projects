@@ -10,8 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $category_id = !empty($_POST['category_id']) ? $_POST['category_id'] : null;
-    $start_date = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
-    $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+    $start_date = !empty($_POST['start_date']) ? convert_date_to_db($_POST['start_date']) : null;
+    $due_date = !empty($_POST['due_date']) ? convert_date_to_db($_POST['due_date']) : null;
     $status = $_POST['status'];
     $priority = $_POST['priority'];
 

@@ -15,6 +15,9 @@ $cats_result = mysqli_query($conn, $cats_sql);
     <meta charset="UTF-8">
     <title>Add New Task</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
     <div class="container">
@@ -70,11 +73,11 @@ $cats_result = mysqli_query($conn, $cats_sql);
             <div class="form-group" style="display: flex; gap: 20px;">
                 <div style="flex: 1;">
                     <label for="start_date">Start Date</label>
-                    <input type="date" name="start_date" id="start_date">
+                    <input type="text" name="start_date" id="start_date" placeholder="dd/mm/yyyy">
                 </div>
                 <div style="flex: 1;">
                     <label for="due_date">Due Date</label>
-                    <input type="date" name="due_date" id="due_date">
+                    <input type="text" name="due_date" id="due_date" placeholder="dd/mm/yyyy">
                 </div>
             </div>
 
@@ -92,5 +95,17 @@ $cats_result = mysqli_query($conn, $cats_sql);
             <a href="index.php" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("#start_date", {
+                dateFormat: "d/m/Y",
+                allowInput: true
+            });
+            flatpickr("#due_date", {
+                dateFormat: "d/m/Y",
+                allowInput: true
+            });
+        });
+    </script>
 </body>
 </html>

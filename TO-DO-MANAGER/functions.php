@@ -14,6 +14,16 @@ function format_date($date) {
     return date('d/m/Y', strtotime($date));
 }
 
+// Helper to convert DD/MM/YYYY to YYYY-MM-DD
+function convert_date_to_db($dateStr) {
+    if (empty($dateStr)) return null;
+    // Check if it's already YYYY-MM-DD
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) return $dateStr;
+    // Try DD/MM/YYYY
+    $d = DateTime::createFromFormat('d/m/Y', $dateStr);
+    return $d ? $d->format('Y-m-d') : null;
+}
+
 // Log action to database
 function log_action($conn, $task_id, $action, $details = null, $user_id = null) {
     // $details can be a string or array (convert to JSON)
