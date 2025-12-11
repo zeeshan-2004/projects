@@ -70,7 +70,7 @@ $result = mysqli_stmt_get_result($stmt);
 <head>
     <meta charset="UTF-8">
     <title>To Do Manager</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=<?php echo time(); ?>">
     <script>
         function toggleStatus(id, btn) {
             // Add rotation animation class to SVG if desired
@@ -191,15 +191,15 @@ $result = mysqli_stmt_get_result($stmt);
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50px;">#</th> <!-- Replaced ID with # Index -->
+                    <th>#</th>
                     <th>Title</th>
                     <th>Category</th>
                     <th>Priority</th>
-                    <th style="width: 30%;">Description</th>
+                    <th>Description</th>
                     <th>Start Date</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    <th style="min-width: 140px;">Actions</th>
+                    <th style="text-align: center;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -215,7 +215,7 @@ $result = mysqli_stmt_get_result($stmt);
                         <tr class="<?php echo $row_class; ?>">
                             <td><strong><?php echo $counter++; ?></strong></td>
                             <td>
-                                <div style="font-weight:600; font-size:1.05em;"><?php echo escape($row['title']); ?></div>
+                                <div class="col-title" title="<?php echo escape($row['title']); ?>"><?php echo escape($row['title']); ?></div>
                             </td>
                             <td><?php echo escape($row['category_name'] ?: 'Uncategorized'); ?></td>
                             <td>
@@ -223,11 +223,10 @@ $result = mysqli_stmt_get_result($stmt);
                                     <?php echo ucfirst($row['priority']); ?>
                                 </span>
                             </td>
-                            <td class="desc-col">
-                                <?php 
-                                $desc = $row['description'];
-                                echo escape(strlen($desc) > 80 ? substr($desc, 0, 80) . '...' : $desc); 
-                                ?>
+                            <td>
+                                <div class="col-desc" title="<?php echo escape($row['description']); ?>">
+                                    <?php echo escape($row['description']); ?>
+                                </div>
                             </td>
                             <td><?php echo format_date($row['start_date']); ?></td>
                             <td>

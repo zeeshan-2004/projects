@@ -62,22 +62,41 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
+    /* table-layout: fixed; - REMOVED for auto width */
+    /* Fix column widths */
 }
 
 table th,
 table td {
     border-bottom: 1px solid #e0e0e0;
-    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 8px;
+    /* Reduced padding to save horizontal space */
     text-align: left;
     vertical-align: middle;
+    word-break: break-word;
+    /* Ensure different tables handle long text gracefully */
 }
+
+/* Prevent wrapping on metadata columns */
+table td:not(.actions):not(:nth-child(2)):not(:nth-child(5)),
+table th:not(:nth-child(2)):not(:nth-child(5)) {
+    white-space: nowrap;
+}
+
+/* Note: nth-child(2) is Title, nth-child(5) is Description. 
+   We want those to wrap or overflow-hidden, but others to be nowrap. */
 
 /* Force actions to stay inline */
 table td.actions {
     white-space: nowrap;
     display: flex;
+    justify-content: flex-start;
+    /* Align start to be safe, or space-between */
     gap: 5px;
     align-items: center;
+    overflow: hidden;
+    /* Prevent spillover */
 }
 
 table th {
@@ -88,10 +107,51 @@ table th {
 }
 
 /* Specific column adjustments */
-table td.desc-col {
+/* Specific column adjustments */
+/* Specific column adjustments */
+.col-title {
+    max-width: 160px;
+    /* Reduced to prevent scrollbar */
+}
+
+.col-desc {
+    max-width: 250px;
+    /* Reduced to prevent scrollbar */
+}
+
+.col-title,
+.col-desc {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Specific adjustment for # column */
+table td:first-child,
+table th:first-child {
+    text-align: center;
+    width: 60px;
+    /* Force minimum width */
+}
+
+/* Helper classes for text truncation */
+.text-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    /* Standard property */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     white-space: normal;
-    min-width: 200px;
-    max-width: 400px;
+    /* Ensure wrapping happens inside the box */
 }
 
 /* Remove min-width to prevent overflow trigger unless tiny */
