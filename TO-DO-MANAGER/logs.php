@@ -2,19 +2,21 @@
 /* === logs.php ===
  * Displays recent activity logs.
  */
-require_once 'db.php';
+require_once 'config/db.php';
+require_once 'includes/auth.php';
+requireLogin();
 
-// Filter by task ID if provided
+$user_id = currentUserId();
 $task_id = $_GET['task_id'] ?? null;
 $limit = 50;
 
 $sql = "SELECT logs.*, tasks.title as task_title 
         FROM activity_logs logs 
         LEFT JOIN tasks ON logs.task_id = tasks.id 
-        WHERE 1=1 ";
+        WHERE logs.user_id = ? "; // Scope by user_id
 
-$params = [];
-$types = "";
+$params = [$user_id];
+$types = "i";
 
 if ($task_id) {
     $sql .= "AND logs.task_id = ? ";
@@ -37,7 +39,7 @@ $result = mysqli_stmt_get_result($stmt);
 <head>
     <meta charset="UTF-8">
     <title>Activity Logs</title>
-    <link rel="stylesheet" href="styles.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="assets/css/styles.css?v=<?php echo time(); ?>">
 </head>
 <body>
     <div class="container">
@@ -63,9 +65,9 @@ $result = mysqli_stmt_get_result($stmt);
                             <td><?php echo $row['created_at']; ?></td>
                             <td>
                                 <?php if ($row['task_title']): ?>
-                                    <a href="edit.php?id=<?php echo $row['task_id']; ?>"><?php echo escape($row['task_title']); ?></a>
+                                    <a href="tasks/edit.php?id=<?php echo $row['task_id']; ?>"><?php echo escape($row['task_title']); ?></a>
                                 <?php else: ?>
-                                    <span style="color:#999;">(Deleted Task)</span>
+                                    <span style="color:#999;">(Deleted/Unknown)</span>
                                 <?php endif; ?>
                             </td>
                             <td><strong><?php echo escape(ucfirst(str_replace('_', ' ', $row['action']))); ?></strong></td>

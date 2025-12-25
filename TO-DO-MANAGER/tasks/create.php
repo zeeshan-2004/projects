@@ -2,8 +2,9 @@
 /* === create.php ===
  * Form to create a new task.
  */
-session_start();
-require_once 'db.php';
+require_once '../config/db.php';
+require_once '../includes/auth.php';
+requireLogin();
 
 // Fetch categories
 $cats_sql = "SELECT * FROM categories ORDER BY name ASC";
@@ -14,7 +15,7 @@ $cats_result = mysqli_query($conn, $cats_sql);
 <head>
     <meta charset="UTF-8">
     <title>Add New Task</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../assets/css/styles.css">
     <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -92,7 +93,7 @@ $cats_result = mysqli_query($conn, $cats_sql);
             </div>
 
             <button type="submit" class="btn btn-primary">Save Task</button>
-            <a href="index.php" class="btn btn-secondary">Cancel</a>
+            <a href="../index.php" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
     <script>

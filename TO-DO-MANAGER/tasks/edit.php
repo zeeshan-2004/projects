@@ -2,25 +2,27 @@
 /* === edit.php ===
  * Form to edit an existing task.
  */
-session_start();
-require_once 'db.php';
+require_once '../config/db.php';
+require_once '../includes/auth.php';
+requireLogin();
 
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 
 $id = $_GET['id'];
+$user_id = currentUserId();
 
-// Fetch task
-$sql = "SELECT * FROM tasks WHERE id = ?";
+// Fetch task (User Scoped)
+$sql = "SELECT * FROM tasks WHERE id = ? AND user_id = ?";
 $stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, "i", $id);
+mysqli_stmt_bind_param($stmt, "ii", $id, $user_id);
 mysqli_stmt_execute($stmt);
 $task = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 
 if (!$task) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 
@@ -40,7 +42,7 @@ $attachments = mysqli_stmt_get_result($stmt_att);
 <head>
     <meta charset="UTF-8">
     <title>Edit Task</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../assets/css/styles.css">
     <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -49,7 +51,7 @@ $attachments = mysqli_stmt_get_result($stmt_att);
         function deleteAttachment(attId, btn) {
             if (!confirm('Delete this file?')) return;
             
-            fetch('ajax/delete_attachment.php', {
+            fetch('delete_attachment.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'attachment_id=' + attId
@@ -136,7 +138,7 @@ $attachments = mysqli_stmt_get_result($stmt_att);
                     <?php while($att = mysqli_fetch_assoc($attachments)): ?>
                         <div class="attachment-item">
                             <span>
-                                <a href="<?php echo escape($att['file_path']); ?>" target="_blank">
+                                <a href="download.php?id=<?php echo $att['id']; ?>" target="_blank">
                                     <?php echo escape($att['file_name']); ?>
                                 </a>
                                 <small>(<?php echo round($att['size']/1024, 1); ?> KB)</small>
@@ -155,12 +157,10 @@ $attachments = mysqli_stmt_get_result($stmt_att);
                 <textarea name="description" id="description" rows="5"><?php echo escape($task['description']); ?></textarea>
             </div>
 
-             <div style="text-align: right; margin-bottom: 10px;">
-                <a href="logs.php?task_id=<?php echo $task['id']; ?>" target="_blank" style="font-size: 0.9em;">View Logs</a>
-            </div>
+
 
             <button type="submit" class="btn btn-primary">Update Task</button>
-            <a href="index.php" class="btn btn-secondary">Cancel</a>
+            <a href="../index.php" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
     <script>

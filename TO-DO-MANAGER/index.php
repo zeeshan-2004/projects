@@ -2,10 +2,17 @@
 /* === index.php ===
  * Main page: Lists all tasks with filters and AJAX actions.
  */
-session_start();
-require_once 'db.php';
+require_once 'config/db.php';
+require_once 'includes/auth.php';
 
-// Fetch options for filters
+requireLogin();
+$user_id = currentUserId();
+
+// Fetch options for filters (Assuming categories are global or user specific? 
+// For now, let's assume global categories or handle them later. 
+// If personal categories required, we'd scope this too. 
+// Prompt says "each user only accesses their own data", implies tasks. 
+// Categories might be shared metadata. I'll leave categories global for now.)
 $cats_result = mysqli_query($conn, "SELECT * FROM categories ORDER BY name ASC");
 
 // Handle Filters
@@ -15,14 +22,14 @@ $filter_status = $_GET['status'] ?? '';
 $filter_priority = $_GET['priority'] ?? '';
 $filter_overdue = isset($_GET['overdue']) ? true : false;
 
-// Build Query
+// Build Query - USER SCOPED
 $sql = "SELECT tasks.*, categories.name AS category_name 
         FROM tasks 
         LEFT JOIN categories ON tasks.category_id = categories.id 
-        WHERE 1=1 ";
+        WHERE tasks.user_id = ? ";
 
-$types = "";
-$params = [];
+$types = "i";
+$params = [$user_id];
 
 if ($search) {
     $sql .= "AND (tasks.title LIKE ? OR tasks.description LIKE ?) ";
@@ -70,7 +77,7 @@ $result = mysqli_stmt_get_result($stmt);
 <head>
     <meta charset="UTF-8">
     <title>To Do Manager</title>
-    <link rel="stylesheet" href="styles.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/styles.css?v=<?php echo time(); ?>">
     <script>
         function toggleStatus(id, btn) {
             // Add rotation animation class to SVG if desired
@@ -78,7 +85,7 @@ $result = mysqli_stmt_get_result($stmt);
             if(svg) svg.style.transition = 'transform 0.5s';
             if(svg) svg.style.transform = 'rotate(180deg)';
 
-            fetch('ajax/toggle_status.php', {
+            fetch('tasks/toggle_status.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'id=' + id
@@ -100,7 +107,7 @@ $result = mysqli_stmt_get_result($stmt);
         function deleteTask(id, btn) {
             if(!confirm('Are you sure? This will delete the task and its attachments.')) return;
 
-            fetch('ajax/delete_task.php', {
+            fetch('tasks/delete_task.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'id=' + id
@@ -115,17 +122,79 @@ $result = mysqli_stmt_get_result($stmt);
             })
             .catch(err => alert('Delete failed'));
         }
+
+        // AJAX Filtering
+        function updateFilters() {
+            const form = document.getElementById('filterForm');
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData).toString();
+            
+            // Update URL without reload
+            history.pushState(null, '', 'index.php?' + params);
+
+            fetch('index.php?' + params)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newBody = doc.getElementById('taskTableBody').innerHTML;
+                document.getElementById('taskTableBody').innerHTML = newBody;
+            })
+            .catch(err => console.error('Error updating filters:', err));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Attach listeners to all inputs in the filter form
+            const inputs = document.querySelectorAll('#filterForm input, #filterForm select');
+            inputs.forEach(input => {
+                input.addEventListener('change', updateFilters);
+                if (input.type === 'text') {
+                    input.addEventListener('input', debounce(updateFilters, 500));
+                }
+            });
+            
+            // Handle Clear button to reset form
+            const clearBtn = document.querySelector('.btn-secondary[href="index.php"]');
+            if(clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.getElementById('filterForm').reset();
+                    // Reset selects manually if needed, or just redirect
+                    // Simpler to just trigger update with empty state
+                    history.pushState(null, '', 'index.php');
+                    fetch('index.php').then(r=>r.text()).then(h=>{
+                         const doc = new DOMParser().parseFromString(h, 'text/html');
+                         document.getElementById('taskTableBody').innerHTML = doc.getElementById('taskTableBody').innerHTML;
+                         // Also reset values visually
+                         document.querySelectorAll('#filterForm input, #filterForm select').forEach(i => {
+                             if(i.type==='checkbox') i.checked=false;
+                             else i.value='';
+                         });
+                    });
+                });
+            }
+        });
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
     </script>
 </head>
 <body>
     <div class="container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 style="margin: 0;">To Do List</h1>
-            <div>
-                <a href="create.php" class="btn btn-primary">
+            <div style="display:flex; align-items:center;">
+                <span style="margin-right: 15px;">Hello, <strong><?php echo escape($_SESSION['user_name'] ?? 'User'); ?></strong></span>
+                <a href="tasks/create.php" class="btn btn-primary">
                     <span style="margin-right:8px; font-size:1.2em;">+</span> Add New Task
                 </a>
-                <a href="logs.php" class="btn btn-secondary" style="margin-left: 10px;">View Activity Logs</a>
+                <a href="logs.php" class="btn btn-secondary" style="margin-left: 10px;">Logs</a>
+                <a href="auth/logout.php" class="btn btn-sm btn-danger" style="margin-left: 10px;">Logout</a>
             </div>
         </div>
 
@@ -140,13 +209,13 @@ $result = mysqli_stmt_get_result($stmt);
         <?php endif; ?>
 
         <div class="filters">
-            <form action="index.php" method="GET" class="filter-row">
+            <form action="index.php" method="GET" class="filter-row" id="filterForm">
                 <div class="filter-item">
                     <input type="text" name="q" placeholder="Search title or details..." value="<?php echo escape($search); ?>">
                 </div>
                 <!-- Categories -->
                 <div class="filter-item">
-                     <select name="category_id" onchange="this.form.submit()">
+                     <select name="category_id">
                         <option value="">All Categories</option>
                         <?php while($cat = mysqli_fetch_assoc($cats_result)): ?>
                             <option value="<?php echo $cat['id']; ?>" <?php echo $filter_cat == $cat['id'] ? 'selected' : ''; ?>>
@@ -157,7 +226,7 @@ $result = mysqli_stmt_get_result($stmt);
                 </div>
                 <!-- Status -->
                 <div class="filter-item">
-                    <select name="status" onchange="this.form.submit()">
+                    <select name="status">
                         <option value="">All Status</option>
                         <option value="pending" <?php echo $filter_status == 'pending' ? 'selected' : ''; ?>>Pending</option>
                         <option value="in_progress" <?php echo $filter_status == 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
@@ -166,7 +235,7 @@ $result = mysqli_stmt_get_result($stmt);
                 </div>
                 <!-- Priority -->
                 <div class="filter-item">
-                    <select name="priority" onchange="this.form.submit()">
+                    <select name="priority">
                         <option value="">All Priorities</option>
                         <option value="low" <?php echo $filter_priority == 'low' ? 'selected' : ''; ?>>Low</option>
                         <option value="medium" <?php echo $filter_priority == 'medium' ? 'selected' : ''; ?>>Medium</option>
@@ -181,7 +250,8 @@ $result = mysqli_stmt_get_result($stmt);
                     </label>
                 </div>
                 <div class="filter-item" style="flex: 0; display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-primary btn-sm" style="height: 38px; min-width: 80px; display: flex; align-items: center; justify-content: center;">Filter</button>
+                    <!-- Filter button removed, auto-updates now -->
+                    <!-- Keeping Clear button but handled by JS -->
                     <a href="index.php" class="btn btn-secondary btn-sm" style="height: 38px; min-width: 80px; display: flex; align-items: center; justify-content: center; text-decoration: none;">Clear</a>
                 </div>
             </form>
@@ -202,7 +272,7 @@ $result = mysqli_stmt_get_result($stmt);
                     <th style="text-align: center;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="taskTableBody">
                 <?php if (mysqli_num_rows($result) > 0): ?>
                     <?php 
                     $counter = 0; // Initialize counter for 0-based index 
@@ -213,29 +283,29 @@ $result = mysqli_stmt_get_result($stmt);
                         $row_class = $is_overdue ? 'row-overdue' : '';
                         ?>
                         <tr class="<?php echo $row_class; ?>">
-                            <td><strong><?php echo $counter++; ?></strong></td>
-                            <td>
+                            <td data-label="#"><strong><?php echo $counter++; ?></strong></td>
+                            <td data-label="Title">
                                 <div class="col-title" title="<?php echo escape($row['title']); ?>"><?php echo escape($row['title']); ?></div>
                             </td>
-                            <td><?php echo escape($row['category_name'] ?: 'Uncategorized'); ?></td>
-                            <td>
+                            <td data-label="Category"><?php echo escape($row['category_name'] ?: 'Uncategorized'); ?></td>
+                            <td data-label="Priority">
                                 <span class="badge priority-<?php echo escape($row['priority']); ?>">
                                     <?php echo ucfirst($row['priority']); ?>
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Description">
                                 <div class="col-desc" title="<?php echo escape($row['description']); ?>">
                                     <?php echo escape($row['description']); ?>
                                 </div>
                             </td>
-                            <td><?php echo format_date($row['start_date']); ?></td>
-                            <td>
+                            <td data-label="Start Date"><?php echo format_date($row['start_date']); ?></td>
+                            <td data-label="Due Date">
                                 <?php echo format_date($row['due_date']); ?>
                                 <?php if ($is_overdue): ?>
                                     <span class="overdue-badge">LATE</span>
                                 <?php endif; ?>
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 <?php
                                 $status_formatted = str_replace('_', '-', $row['status']); 
                                 $status_label = ucwords(str_replace('_', ' ', $row['status']));
@@ -244,9 +314,9 @@ $result = mysqli_stmt_get_result($stmt);
                                     <?php echo $status_label; ?>
                                 </span>
                             </td>
-                            <td class="actions">
+                            <td class="actions" data-label="Actions">
                                 <!-- Edit Button -->
-                                <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="tasks/edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning" title="Edit">
                                     Edit
                                 </a>
                                 
